@@ -362,11 +362,12 @@ local function matchesSelection(obj)
     if selected == "Legendary" then
         return closeTo(r, g, b, LEGENDARY_COLOR)
     elseif selected == "Mystic" then
+        -- vermelho, rosa e magenta
         local h, s, v = light.Color:ToHSV()
-        return (h <= 0.04 or h >= 0.96) and s >= 0.4 and v >= 0.25
+        return (h <= 0.04 or h >= 0.83) and s >= 0.35 and v >= 0.25
     elseif selected == "Épico" then
         local h, s, v = light.Color:ToHSV()
-        return h >= 0.72 and h <= 0.89 and s >= 0.25 and v >= 0.25
+        return h >= 0.72 and h < 0.83 and s >= 0.25 and v >= 0.25
     elseif selected == "Incomum" then
         return closeTo(r, g, b, INCOMUM_COLOR)
     elseif selected == "Comum" then
