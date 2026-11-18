@@ -1,0 +1,654 @@
+--// Admin V2 Hub (JJR) | Tema Sukuna
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+local LP = Players.LocalPlayer
+
+local parent = (gethui and gethui()) or game:GetService("CoreGui")
+pcall(function()
+    local old = parent:FindFirstChild("AdminV2Hub_JJR")
+    if old then old:Destroy() end
+end)
+pcall(function()
+    local old = parent:FindFirstChild("AvisoMorte")
+    if old then old:Destroy() end
+end)
+
+--// Tema
+local C = {
+    bg = Color3.fromRGB(12, 8, 10),
+    panel = Color3.fromRGB(24, 13, 16),
+    side = Color3.fromRGB(18, 10, 12),
+    red = Color3.fromRGB(200, 20, 38),
+    dark = Color3.fromRGB(95, 10, 20),
+    off = Color3.fromRGB(60, 40, 44),
+    text = Color3.fromRGB(240, 228, 228),
+}
+
+local function new(class, props, par)
+    local o = Instance.new(class)
+    for k, v in pairs(props) do o[k] = v end
+    o.Parent = par
+    return o
+end
+local function corner(o, r) return new("UICorner", {CornerRadius = UDim.new(0, r or 6)}, o) end
+local function stroke(o, col, t) return new("UIStroke", {Color = col or C.red, Thickness = t or 1}, o) end
+
+--// GUI base
+local gui = new("ScreenGui", {Name = "AdminV2Hub_JJR", ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, parent)
+
+--// Sons (pools reutilizáveis)
+local FUNC_SOUND_IDS = {
+    "106529518227269",
+    "133032321300540",
+    "126229534418185",
+    "75908750614073",
+    "92210528794806",
+}
+local TAB_SOUND_ID = "130036764141803"
+local COPIES = 3
+local soundEnabled = true
+local soundVolume = 0.6
+
+local function makePool(ids, copies)
+    local pool = {}
+    for _, id in ipairs(ids) do
+        for _ = 1, copies do
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://" .. id
+            s.Volume = soundVolume
+            s.Parent = gui
+            table.insert(pool, s)
+        end
+    end
+    return pool
+end
+
+local funcPool = makePool(FUNC_SOUND_IDS, COPIES)
+local tabPool = makePool({TAB_SOUND_ID}, COPIES)
+
+task.spawn(function()
+    pcall(function()
+        ContentProvider:PreloadAsync(funcPool)
+        ContentProvider:PreloadAsync(tabPool)
+    end)
+end)
+
+local function playFromPool(pool)
+    if not soundEnabled then return end
+    local total = #pool
+    local start = math.random(1, total)
+    for i = 0, total - 1 do
+        local s = pool[(start + i - 1) % total + 1]
+        if not s.IsPlaying then
+            s.Volume = soundVolume
+            s.TimePosition = 0
+            s:Play()
+            return
+        end
+    end
+    local s = pool[start]
+    s.Volume = soundVolume
+    s.TimePosition = 0
+    s:Play()
+end
+
+local function playClick() playFromPool(funcPool) end -- funções
+local function playTab() playFromPool(tabPool) end     -- troca de aba
+
+local main = new("Frame", {
+    Size = UDim2.new(0, 540, 0, 350),
+    Position = UDim2.new(0.5, -270, 0.5, -175),
+    BackgroundColor3 = C.bg,
+    ClipsDescendants = true,
+}, gui)
+corner(main, 10); stroke(main, C.red, 1.5)
+new("UIGradient", {
+    Color = ColorSequence.new(Color3.fromRGB(28, 8, 12), Color3.fromRGB(8, 6, 7)),
+    Rotation = 90,
+}, main)
+
+--// Barra do topo
+local top = new("Frame", {Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = C.dark}, main)
+corner(top, 10)
+new("Frame", {Size = UDim2.new(1, 0, 0, 10), Position = UDim2.new(0, 0, 1, -10), BackgroundColor3 = C.dark, BorderSizePixel = 0}, top)
+
+new("TextLabel", {
+    Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 12, 0, 0),
+    BackgroundTransparency = 1, Text = "👹 Admin V2 Hub (JJR)  •  両面宿儺 Sukuna",
+    TextColor3 = C.text, Font = Enum.Font.GothamBold, TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, top)
+
+local minBtn = new("TextButton", {
+    Size = UDim2.new(0, 28, 0, 24), Position = UDim2.new(1, -66, 0.5, -12),
+    BackgroundColor3 = C.panel, Text = "–", TextColor3 = C.text,
+    Font = Enum.Font.GothamBold, TextSize = 18,
+}, top)
+corner(minBtn, 6)
+
+local closeBtn = new("TextButton", {
+    Size = UDim2.new(0, 28, 0, 24), Position = UDim2.new(1, -34, 0.5, -12),
+    BackgroundColor3 = C.red, Text = "X", TextColor3 = C.text,
+    Font = Enum.Font.GothamBold, TextSize = 13,
+}, top)
+corner(closeBtn, 6)
+
+--// Corpo
+local body = new("Frame", {Size = UDim2.new(1, 0, 1, -36), Position = UDim2.new(0, 0, 0, 36), BackgroundTransparency = 1}, main)
+
+local sidebar = new("Frame", {Size = UDim2.new(0, 130, 1, -12), Position = UDim2.new(0, 6, 0, 6), BackgroundColor3 = C.side}, body)
+corner(sidebar, 8); stroke(sidebar, C.dark)
+new("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}, sidebar)
+new("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6)}, sidebar)
+
+local content = new("Frame", {
+    Size = UDim2.new(1, -150, 1, -12), Position = UDim2.new(0, 144, 0, 6),
+    BackgroundColor3 = C.side, ClipsDescendants = true,
+}, body)
+corner(content, 8); stroke(content, C.dark)
+
+--// Sistema de abas
+local pages, tabBtns = {}, {}
+local function selectTab(name)
+    for n, p in pairs(pages) do p.Visible = (n == name) end
+    for n, b in pairs(tabBtns) do
+        TweenService:Create(b, TweenInfo.new(0.15), {BackgroundColor3 = (n == name) and C.red or C.panel}):Play()
+    end
+end
+
+local function NewTab(name)
+    local b = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = C.panel, Text = name,
+        TextColor3 = C.text, Font = Enum.Font.GothamMedium, TextSize = 13, AutoButtonColor = false,
+    }, sidebar)
+    corner(b, 6)
+    local p = new("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false}, content)
+    pages[name], tabBtns[name] = p, b
+    b.MouseButton1Click:Connect(function()
+        playTab() -- som exclusivo de troca de aba
+        selectTab(name)
+    end)
+    return p
+end
+
+--// ABA: Início
+local pInicio = NewTab("🏠 Início")
+
+local bgImage = new("ImageLabel", {
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Image = "rbxassetid://92210528794806",
+    ImageTransparency = 0.2, -- opacidade 0.8
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 1,
+}, pInicio)
+corner(bgImage, 8)
+
+--// Dismantle: Teleportar para CursedObject
+local COOLDOWN = 0.5          -- cooldown entre usos (segundos)
+local MAX_DISTANCE = 1000     -- CursedObject acima disso (studs) é ignorado
+local visited = {}            -- CursedObjects já teleportados
+local lastUse = 0
+
+-- Seleção de raridade (por cor do PointLight)
+local selected = "Nenhum"
+local LEGENDARY_COLOR = {255, 198, 66}
+local INCOMUM_COLOR = {98, 228, 132}
+local COMUM_COLOR = {80, 162, 255}
+local COLOR_TOLERANCE = 8
+
+local lootBtn = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 36),
+    Position = UDim2.new(0, 12, 0, 12),
+    BackgroundColor3 = C.bg,
+    BackgroundTransparency = 0.25,
+    Text = "Dismantle: Teleportar próximo",
+    TextColor3 = C.text,
+    Font = Enum.Font.GothamBold,
+    TextSize = 14,
+    AutoButtonColor = false,
+    ZIndex = 2,
+}, pInicio)
+corner(lootBtn, 6)
+stroke(lootBtn, C.red, 1.5)
+
+local resetBtn = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 36),
+    Position = UDim2.new(0, 12, 0, 56),
+    BackgroundColor3 = C.bg,
+    BackgroundTransparency = 0.25,
+    Text = "Resetar caixa",
+    TextColor3 = C.text,
+    Font = Enum.Font.GothamBold,
+    TextSize = 14,
+    AutoButtonColor = false,
+    ZIndex = 2,
+}, pInicio)
+corner(resetBtn, 6)
+stroke(resetBtn, C.red, 1.5)
+
+local selBtn = new("TextButton", {
+    Size = UDim2.new(1, -24, 0, 36),
+    Position = UDim2.new(0, 12, 0, 100),
+    BackgroundColor3 = C.bg,
+    BackgroundTransparency = 0.25,
+    Text = "Seleção: Nenhum  ▼",
+    TextColor3 = C.text,
+    Font = Enum.Font.GothamBold,
+    TextSize = 14,
+    AutoButtonColor = false,
+    ZIndex = 2,
+}, pInicio)
+corner(selBtn, 6)
+stroke(selBtn, C.red, 1.5)
+
+local msgLabel = new("TextLabel", {
+    Size = UDim2.new(1, -24, 0, 24),
+    Position = UDim2.new(0, 12, 1, -30),
+    BackgroundTransparency = 1,
+    Text = "",
+    TextColor3 = C.text,
+    Font = Enum.Font.GothamBold,
+    TextSize = 13,
+    ZIndex = 2,
+}, pInicio)
+
+local msgToken = 0
+local function showMsg(text)
+    msgToken = msgToken + 1
+    local my = msgToken
+    msgLabel.Text = text
+    task.delay(2, function()
+        if msgToken == my then msgLabel.Text = "" end
+    end)
+end
+
+for _, b in ipairs({lootBtn, resetBtn, selBtn}) do
+    b.MouseEnter:Connect(function()
+        TweenService:Create(b, TweenInfo.new(0.12), {BackgroundColor3 = C.panel, BackgroundTransparency = 0.1}):Play()
+    end)
+    b.MouseLeave:Connect(function()
+        TweenService:Create(b, TweenInfo.new(0.12), {BackgroundColor3 = C.bg, BackgroundTransparency = 0.25}):Play()
+    end)
+end
+
+--// Dropdown de seleção
+local dropdown = new("ScrollingFrame", {
+    Size = UDim2.new(1, -24, 0, 132),
+    Position = UDim2.new(0, 12, 0, 140),
+    BackgroundColor3 = C.panel,
+    BorderSizePixel = 0,
+    ScrollBarThickness = 3,
+    ScrollBarImageColor3 = C.red,
+    CanvasSize = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+    Visible = false,
+    ZIndex = 10,
+}, pInicio)
+corner(dropdown, 6); stroke(dropdown, C.red, 1.5)
+new("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}, dropdown)
+new("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}, dropdown)
+
+local OPTIONS = {
+    {name = "Nenhum",    works = true,  color = C.text},
+    {name = "Legendary", works = true,  color = Color3.fromRGB(255, 198, 66)},
+    {name = "Mystic",    works = true,  color = Color3.fromRGB(230, 40, 50)},
+    {name = "Épico",     works = true,  color = Color3.fromRGB(170, 80, 255)},
+    {name = "Rare",      works = false, color = Color3.fromRGB(110, 110, 120)},
+    {name = "Incomum",   works = true,  color = Color3.fromRGB(98, 228, 132)},
+    {name = "Comum",     works = true,  color = Color3.fromRGB(80, 162, 255)},
+}
+
+local optBtns = {}
+local function refreshOptions()
+    selBtn.Text = "Seleção: " .. selected .. "  ▼"
+    for n, b in pairs(optBtns) do
+        b.BackgroundColor3 = (n == selected) and C.dark or C.bg
+    end
+end
+
+for i, opt in ipairs(OPTIONS) do
+    local ob = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 26),
+        BackgroundColor3 = C.bg,
+        Text = opt.name,
+        TextColor3 = opt.color,
+        Font = Enum.Font.GothamMedium,
+        TextSize = 13,
+        AutoButtonColor = false,
+        LayoutOrder = i,
+        ZIndex = 11,
+    }, dropdown)
+    corner(ob, 5)
+    optBtns[opt.name] = ob
+    ob.MouseButton1Click:Connect(function()
+        playClick() -- função
+        if opt.works then
+            selected = opt.name
+            refreshOptions()
+            dropdown.Visible = false
+            showMsg("Seleção: " .. opt.name)
+        else
+            showMsg(opt.name .. " ainda não funciona")
+        end
+    end)
+end
+refreshOptions()
+
+selBtn.MouseButton1Click:Connect(function()
+    playClick() -- função
+    dropdown.Visible = not dropdown.Visible
+end)
+
+--// Verificação por cor do PointLight
+local function closeTo(r, g, b, t)
+    return math.abs(r - t[1]) <= COLOR_TOLERANCE
+        and math.abs(g - t[2]) <= COLOR_TOLERANCE
+        and math.abs(b - t[3]) <= COLOR_TOLERANCE
+end
+
+local function matchesSelection(obj)
+    if selected == "Nenhum" then return true end
+
+    local light = obj:FindFirstChildWhichIsA("PointLight", true)
+    if not light then return false end
+
+    local r = math.round(light.Color.R * 255)
+    local g = math.round(light.Color.G * 255)
+    local b = math.round(light.Color.B * 255)
+
+    if selected == "Legendary" then
+        return closeTo(r, g, b, LEGENDARY_COLOR)
+    elseif selected == "Mystic" then
+        return r >= 180 and g <= 90 and b <= 90
+    elseif selected == "Épico" then
+        local h, s, v = light.Color:ToHSV()
+        return h >= 0.72 and h <= 0.89 and s >= 0.25 and v >= 0.25
+    elseif selected == "Incomum" then
+        return closeTo(r, g, b, INCOMUM_COLOR)
+    elseif selected == "Comum" then
+        return closeTo(r, g, b, COMUM_COLOR)
+    end
+    return false
+end
+
+local function getRoot()
+    local char = LP.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function getTargetCF(obj, prompt)
+    local pp = prompt.Parent
+    if pp and pp:IsA("BasePart") then
+        return pp.CFrame
+    elseif obj:IsA("Model") then
+        return obj:GetPivot()
+    end
+end
+
+local function teleportNext()
+    local now = os.clock()
+    if now - lastUse < COOLDOWN then return end
+    lastUse = now
+
+    local root = getRoot()
+    if not root then
+        warn("[Admin V2 Hub] Personagem não encontrado.")
+        return
+    end
+
+    local folder = workspace:FindFirstChild("CullingLoot")
+    if not folder then
+        warn("[Admin V2 Hub] Pasta CullingLoot não encontrada no workspace.")
+        showMsg("Não tem mais nenhum")
+        return
+    end
+
+    local bestObj, bestCF, bestDist
+    for _, obj in ipairs(folder:GetChildren()) do
+        if obj.Name == "CursedObject" and not visited[obj] and matchesSelection(obj) then
+            local prompt = obj:FindFirstChild("LootPrompt", true)
+            if prompt and prompt:IsA("ProximityPrompt") then
+                local cf = getTargetCF(obj, prompt)
+                if cf then
+                    local dist = (cf.Position - root.Position).Magnitude
+                    if dist <= MAX_DISTANCE and (not bestDist or dist < bestDist) then
+                        bestObj, bestCF, bestDist = obj, cf, dist
+                    end
+                end
+            end
+        end
+    end
+
+    if not bestObj then
+        showMsg("Não tem mais nenhum")
+        return
+    end
+
+    visited[bestObj] = true
+    root.CFrame = bestCF + Vector3.new(0, 2, 0)
+end
+
+lootBtn.MouseButton1Click:Connect(function()
+    playClick() -- função
+    dropdown.Visible = false
+    teleportNext()
+end)
+
+resetBtn.MouseButton1Click:Connect(function()
+    playClick() -- função
+    visited = {}
+    showMsg("Caixa resetada")
+end)
+
+--// ABA: Configurações
+local pConfig = NewTab("⚙ Configurações")
+new("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder}, pConfig)
+new("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)}, pConfig)
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, Text = "SOM",
+    TextColor3 = Color3.fromRGB(170, 140, 145), Font = Enum.Font.GothamBold, TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1,
+}, pConfig)
+
+-- Toggle: sons dos botões
+local tf = new("Frame", {Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = 2}, pConfig)
+corner(tf, 6); stroke(tf, C.dark)
+new("TextLabel", {
+    Size = UDim2.new(1, -60, 1, 0), Position = UDim2.new(0, 10, 0, 0),
+    BackgroundTransparency = 1, Text = "Sons dos botões", TextColor3 = C.text,
+    Font = Enum.Font.GothamMedium, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
+}, tf)
+local sw = new("TextButton", {
+    Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -50, 0.5, -10),
+    BackgroundColor3 = C.red, Text = "", AutoButtonColor = false,
+}, tf)
+corner(sw, 10)
+local knob = new("Frame", {
+    Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(1, -18, 0.5, -8),
+    BackgroundColor3 = Color3.new(1, 1, 1),
+}, sw)
+corner(knob, 8)
+
+sw.MouseButton1Click:Connect(function()
+    soundEnabled = not soundEnabled
+    TweenService:Create(sw, TweenInfo.new(0.15), {BackgroundColor3 = soundEnabled and C.red or C.off}):Play()
+    TweenService:Create(knob, TweenInfo.new(0.15), {
+        Position = soundEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    }):Play()
+    playClick() -- função (só toca se estiver ativado)
+end)
+
+-- Volume
+local vf = new("Frame", {Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = 3}, pConfig)
+corner(vf, 6); stroke(vf, C.dark)
+new("TextLabel", {
+    Size = UDim2.new(1, -110, 1, 0), Position = UDim2.new(0, 10, 0, 0),
+    BackgroundTransparency = 1, Text = "Volume (0 a 10)", TextColor3 = C.text,
+    Font = Enum.Font.GothamMedium, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
+}, vf)
+local vb = new("TextBox", {
+    Size = UDim2.new(0, 70, 0, 22), Position = UDim2.new(1, -78, 0.5, -11),
+    BackgroundColor3 = C.bg, Text = "6", TextColor3 = C.text,
+    Font = Enum.Font.Gotham, TextSize = 13, ClearTextOnFocus = false,
+}, vf)
+corner(vb, 5); stroke(vb, C.red)
+vb.FocusLost:Connect(function()
+    local n = tonumber(vb.Text)
+    if n then
+        n = math.clamp(n, 0, 10)
+        soundVolume = n / 10
+        vb.Text = tostring(n)
+        playClick() -- função
+    else
+        vb.Text = tostring(soundVolume * 10)
+    end
+end)
+
+--// Aviso de morte (ativar em Configurações)
+local ALVO = "Hula2175217576"
+local MENSAGEM = "Henrique morreu kkk 💀"
+local avisoEnabled = false
+local avisoConns = {}
+
+local avisoGui = new("ScreenGui", {
+    Name = "AvisoMorte", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 999999,
+}, parent)
+
+local function mostrarAviso()
+    if not avisoEnabled then return end
+    local label = new("TextLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.3, 0),
+        Size = UDim2.new(0, 500, 0, 70),
+        BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+        BackgroundTransparency = 0.2,
+        TextColor3 = Color3.fromRGB(255, 60, 60),
+        Font = Enum.Font.GothamBold,
+        TextSize = 32,
+        Text = MENSAGEM,
+    }, avisoGui)
+    corner(label, 12)
+
+    task.delay(4, function()
+        if not label.Parent then return end
+        local tween = TweenService:Create(label, TweenInfo.new(0.5), {
+            BackgroundTransparency = 1,
+            TextTransparency = 1,
+        })
+        tween:Play()
+        tween.Completed:Wait()
+        label:Destroy()
+    end)
+end
+
+local function monitorarPersonagem(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    if not hum or not avisoEnabled then return end
+    table.insert(avisoConns, hum.Died:Connect(mostrarAviso))
+end
+
+local function monitorarPlayer(plr)
+    if plr.Name ~= ALVO then return end
+    if plr.Character then
+        task.spawn(monitorarPersonagem, plr.Character)
+    end
+    table.insert(avisoConns, plr.CharacterAdded:Connect(monitorarPersonagem))
+end
+
+local function setAviso(on)
+    avisoEnabled = on
+    for _, c in ipairs(avisoConns) do c:Disconnect() end
+    avisoConns = {}
+    if on then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            monitorarPlayer(plr)
+        end
+        table.insert(avisoConns, Players.PlayerAdded:Connect(monitorarPlayer))
+    end
+end
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, Text = "AVISO",
+    TextColor3 = Color3.fromRGB(170, 140, 145), Font = Enum.Font.GothamBold, TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4,
+}, pConfig)
+
+local af = new("Frame", {Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = 5}, pConfig)
+corner(af, 6); stroke(af, C.dark)
+new("TextLabel", {
+    Size = UDim2.new(1, -60, 1, 0), Position = UDim2.new(0, 10, 0, 0),
+    BackgroundTransparency = 1, Text = "Aviso de morte", TextColor3 = C.text,
+    Font = Enum.Font.GothamMedium, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
+}, af)
+local asw = new("TextButton", {
+    Size = UDim2.new(0, 40, 0, 20), Position = UDim2.new(1, -50, 0.5, -10),
+    BackgroundColor3 = C.off, Text = "", AutoButtonColor = false,
+}, af)
+corner(asw, 10)
+local aknob = new("Frame", {
+    Size = UDim2.new(0, 16, 0, 16), Position = UDim2.new(0, 2, 0.5, -8),
+    BackgroundColor3 = Color3.new(1, 1, 1),
+}, asw)
+corner(aknob, 8)
+
+asw.MouseButton1Click:Connect(function()
+    setAviso(not avisoEnabled)
+    TweenService:Create(asw, TweenInfo.new(0.15), {BackgroundColor3 = avisoEnabled and C.red or C.off}):Play()
+    TweenService:Create(aknob, TweenInfo.new(0.15), {
+        Position = avisoEnabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+    }):Play()
+    playClick() -- função
+end)
+
+selectTab("🏠 Início")
+
+--// Fechar (sem som)
+closeBtn.MouseButton1Click:Connect(function()
+    setAviso(false)
+    avisoGui:Destroy()
+    gui:Destroy()
+end)
+
+--// Minimizar (sem som)
+local minimized = false
+local fullSize = main.Size
+minBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        body.Visible = false
+        minBtn.Text = "+"
+        TweenService:Create(main, TweenInfo.new(0.2), {Size = UDim2.new(0, 540, 0, 36)}):Play()
+    else
+        minBtn.Text = "–"
+        TweenService:Create(main, TweenInfo.new(0.2), {Size = fullSize}):Play()
+        task.delay(0.2, function() body.Visible = true end)
+    end
+end)
+
+--// Arrastar
+local dragging, dragStart, startPos
+top.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        dragging, dragStart, startPos = true, i.Position, main.Position
+        i.Changed:Connect(function()
+            if i.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+UIS.InputChanged:Connect(function(i)
+    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        local d = i.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+    end
+end)
+
+--// Mostrar/ocultar com RightShift
+UIS.InputBegan:Connect(function(i, gp)
+    if not gp and i.KeyCode == Enum.KeyCode.RightShift then
+        main.Visible = not main.Visible
+    end
+end)
